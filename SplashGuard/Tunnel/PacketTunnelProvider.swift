@@ -53,6 +53,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - 规则
 
     private func loadRules() {
+        TunnelLog.append("bundle main=\(Bundle.main.bundlePath)")
+        TunnelLog.append("bundle exe=\(Bundle(for: PacketTunnelProvider.self).executableURL?.path ?? "-")")
+
         // appex 里优先读自己的资源；个别情况下 appex 的资源没被拷进去，
         // 就退回到宿主 App 的 bundle（PlugIns/X.appex 的上两级）。
         var candidates: [URL] = []
@@ -60,6 +63,9 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let appexURL = Bundle(for: PacketTunnelProvider.self).bundleURL
         let appURL = appexURL.deletingLastPathComponent().deletingLastPathComponent()
         candidates.append(appURL)
+        // 再兜一层：资源被放进了 appex 内的 Resources 子目录
+        candidates.append(appexURL.appendingPathComponent("Resources"))
+        candidates.append(appURL.appendingPathComponent("Resources"))
 
         for dir in candidates {
             RuleEngine.shared.load(directory: dir)
@@ -68,6 +74,38 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             NSLog("[SplashGuard] load dir=%@ suffix=%ld err=%@", dir.path, st.suffixCount, RuleEngine.shared.loadError ?? "-")
             if RuleEngine.shared.isLoaded && st.suffixCount > 0 { break }
         }
+    }
+
+    // MARK: - App 侧查询（不依赖文件系统）
+
+    override func handleAppMessage(_ messageData: Data,
+                                   completionHandler: ((Data?) -> Void)?) {
+        let cmd = String(data: messageData, encoding: .utf8) ?? ""
+        if cmd == "reload" {
+            loadRules()
+        }
+
+        let st = RuleEngine.shared.stats
+        let probes: [String: Any] = [
+            "doubleclick.net": RuleEngine.shared.shouldBlock(host: "doubleclick.net"),
+            "google-analytics.com": RuleEngine.shared.shouldBlock(host: "google-analytics.com"),
+            "www.apple.com": RuleEngine.shared.shouldBlock(host: "www.apple.com")
+        ]
+        let info: [String: Any] = [
+            "loaded": RuleEngine.shared.isLoaded,
+            "suffix": st.suffixCount,
+            "exact": st.exactCount,
+            "keyword": st.keywordCount,
+            "millis": st.loadMillis,
+            "error": RuleEngine.shared.loadError ?? "-",
+            "total": totalCount,
+            "blocked": blockedCount,
+            "probe": probes,
+            "log": TunnelLog.tail(60)
+        ]
+        let data = try? JSONSerialization.data(withJSONObject: info,
+                                               options: [.prettyPrinted, .sortedKeys])
+        completionHandler?(data)
     }
 
     // MARK: - 收包
