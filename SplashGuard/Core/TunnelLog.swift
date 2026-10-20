@@ -19,10 +19,25 @@ public enum TunnelLog {
         return f
     }()
 
+    // MARK: - 内存环形缓冲（不依赖文件系统，走 handleAppMessage 回传）
+
+    private static let capacity = 200
+    private static var memory: [String] = []
+
+    public static func tail(_ n: Int) -> [String] {
+        if memory.count <= n { return memory }
+        return Array(memory.suffix(n))
+    }
+
     public static func append(_ line: String) {
+        let formatted = "[\(stamp.string(from: Date()))] \(line)"
+        memory.append(formatted)
+        if memory.count > capacity {
+            memory.removeFirst(memory.count - capacity)
+        }
+
         guard let url = fileURL else { return }
-        let text = "[\(stamp.string(from: Date()))] \(line)\n"
-        guard let data = text.data(using: .utf8) else { return }
+        guard let data = (formatted + "\n").data(using: .utf8) else { return }
         let fm = FileManager.default
         if fm.fileExists(atPath: url.path), let handle = try? FileHandle(forWritingTo: url) {
             handle.seekToEndOfFile()
@@ -35,6 +50,7 @@ public enum TunnelLog {
     }
 
     public static func reset() {
+        memory.removeAll()
         guard let url = fileURL else { return }
         try? FileManager.default.removeItem(at: url)
     }
