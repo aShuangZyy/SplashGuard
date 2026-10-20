@@ -98,12 +98,11 @@ public final class VPNController {
             }
             completion(reply)
         }
-        let errorHandler: (Error?) -> Void = { error in
-            completion("消息通道错误：\(error?.localizedDescription ?? "未知")")
+        do {
+            try session.sendProviderMessage(Data(text.utf8), responseHandler: responseHandler)
+        } catch {
+            completion("消息通道错误：\(error.localizedDescription)")
         }
-        session.sendProviderMessage(Data(text.utf8),
-                                    responseHandler: responseHandler,
-                                    errorHandler: errorHandler)
     }
 
     public func start(completion: @escaping (Error?) -> Void) {
