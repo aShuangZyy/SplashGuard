@@ -162,3 +162,87 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
     scheme:
       gatherCoverageData: false
+
+  # 诊断 EntM1：与 SGNoNE 完全相同的代码/资源，只改 entitlement。
+  SGM1:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.m1
+        PRODUCT_NAME: SGM1
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM1.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
+
+  # 诊断 EntM2：与 SGNoNE 完全相同的代码/资源，只改 entitlement。
+  SGM2:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.m2
+        PRODUCT_NAME: SGM2
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM2.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
+
+  # 诊断 EntM3：与 SGNoNE 完全相同的代码/资源，只改 entitlement。
+  SGM3:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.m3
+        PRODUCT_NAME: SGM3
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM3.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
+
+  # 诊断 EntM4：与 SGNoNE 完全相同的代码/资源，只改 entitlement。
+  SGM4:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.m4
+        PRODUCT_NAME: SGM4
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM4.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
