@@ -12,12 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    # macos-15 自带 Xcode 16，能读 XcodeGen 写出的 objectVersion 77；
-    # macos-14 默认 Xcode 15.4 会报 "future Xcode project file format"
+  # Xcode 16.4 + SDK 18.5（macos-15）
+  build-xcode16:
     runs-on: macos-15
     timeout-minutes: 40
-
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +45,7 @@ jobs:
       - name: 编译（不签名）
         run: |
           set -o pipefail
-          for SCHEME in SplashGuard SplashGuardMini SGMiniObjC SGMiniEmb; do
+          for SCHEME in SplashGuard SplashGuardMini SGMiniObjC; do
             echo "===== building $SCHEME"
             xcodebuild \
               -project SplashGuard.xcodeproj \
@@ -67,52 +65,81 @@ jobs:
       - name: fakesign 并打包 IPA
         run: |
           set -euo pipefail
-          PRODUCTS=build/Build/Products/Release-iphoneos
-
-          pack() {
-            local APP_NAME="$1"; local APP_ENT="$2"; local TUN_ENT="$3"; local OUT="$4"
-            local D; D=$(mktemp -d)
-            mkdir -p "$D/Payload"
-            cp -R "$PRODUCTS/$APP_NAME.app" "$D/Payload/"
-            local APPDIR="$D/Payload/$APP_NAME.app"
-            local EXEC="$APPDIR/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Info.plist")"
-            echo "signing $EXEC"
-            ldid -S"$APP_ENT" "$EXEC"
-            # 嵌入的 Swift 运行时（SGMiniEmb/SplashGuard 若开启 embed）也要签
-            for DYLIB in "$APPDIR"/Frameworks/*.dylib; do
-              [ -f "$DYLIB" ] || continue
-              ldid -S "$DYLIB"
-            done
-            if [ -n "$TUN_ENT" ]; then
-              for APPEX in "$APPDIR"/PlugIns/*.appex; do
-                [ -d "$APPEX" ] || continue
-                local EXE="$APPEX/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPEX/Info.plist")"
-                echo "signing $EXE"
-                ldid -S"$TUN_ENT" "$EXE"
-              done
-            fi
-            ( cd "$D" && zip -qry "$OLDPWD/$OUT" Payload )
-            ls -lh "$OUT"
-          }
-
-          pack SplashGuard SplashGuard/Entitlements/App.entitlements \
-               SplashGuard/Entitlements/Tunnel.entitlements SplashGuard.ipa
-
-          pack SplashGuardMini SplashGuard/Entitlements/Mini.entitlements "" SplashGuardMini.ipa
-          pack SGMiniObjC SplashGuard/Entitlements/Mini.entitlements "" SGMiniObjC.ipa
-          pack SGMiniEmb SplashGuard/Entitlements/Mini.entitlements "" SGMiniEmb.ipa
-
-          for F in SplashGuard.ipa SplashGuardMini.ipa SGMiniObjC.ipa SGMiniEmb.ipa; do
+          chmod +x tools/pack.sh
+          tools/pack.sh SplashGuard SplashGuard/Entitlements/App.entitlements SplashGuard.ipa SplashGuard/Entitlements/Tunnel.entitlements
+          tools/pack.sh SplashGuardMini SplashGuard/Entitlements/Mini.entitlements SGMini-swift16.ipa
+          tools/pack.sh SGMiniObjC SplashGuard/Entitlements/Mini.entitlements SGMini-objc.ipa
+          for F in SplashGuard.ipa SGMini-swift16.ipa SGMini-objc.ipa; do
             echo "===== $F"
             unzip -l "$F"
           done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SplashGuard-ipa
+          name: xcode16
           path: |
             SplashGuard.ipa
-            SplashGuardMini.ipa
-            SGMiniObjC.ipa
-            SGMiniEmb.ipa
-          if-no-files-found: error
+            SGMini-swift16.ipa
+            SGMini-objc.ipa
+
+  # Xcode 15.4 + SDK 17.5（macos-14），用 Swift 5.9 编译，验证是不是工具链问题。
+  # XcodeGen 会写 objectVersion 77，Xcode 15 读不了，所以生成后强行改回 56。
+  build-xcode15:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 环境信息
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: 安装工具
+        run: |
+          brew install xcodegen ldid
+
+      - name: 生成工程（降级 pbxproj 格式）
+        run: |
+          xcodegen generate
+          PBX=SplashGuard.xcodeproj/project.pbxproj
+          sed -i '' 's/objectVersion = 77;/objectVersion = 56;/' "$PBX"
+          grep -m1 objectVersion "$PBX"
+
+      - name: 编译（不签名）
+        run: |
+          set -o pipefail
+          for SCHEME in SplashGuard SplashGuardMini SGMiniObjC; do
+            echo "===== building $SCHEME"
+            xcodebuild \
+              -project SplashGuard.xcodeproj \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              ONLY_ACTIVE_ARCH=NO \
+              build
+          done
+
+      - name: fakesign 并打包 IPA
+        run: |
+          set -euo pipefail
+          chmod +x tools/pack.sh
+          tools/pack.sh SplashGuard SplashGuard/Entitlements/App.entitlements SplashGuard-xc15.ipa SplashGuard/Entitlements/Tunnel.entitlements
+          tools/pack.sh SplashGuardMini SplashGuard/Entitlements/Mini.entitlements SGMini-swift15.ipa
+          for F in SplashGuard-xc15.ipa SGMini-swift15.ipa; do
+            echo "===== $F"
+            unzip -l "$F"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xcode15
+          path: |
+            SplashGuard-xc15.ipa
+            SGMini-swift15.ipa
