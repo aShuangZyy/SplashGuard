@@ -62,3 +62,21 @@ targets:
         SKIP_INSTALL: "YES"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+
+  # 最小诊断 App：不碰 NetworkExtension、不读规则表、不加载任何资源。
+  # 用来二分「闪退是签名/工具链问题」还是「我们代码问题」。
+  SplashGuardMini:
+    type: application
+    platform: iOS
+    sources:
+      - path: Mini
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.mini
+        PRODUCT_NAME: SplashGuardMini
+        INFOPLIST_FILE: Mini/Info-Mini.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    scheme:
+      gatherCoverageData: false
