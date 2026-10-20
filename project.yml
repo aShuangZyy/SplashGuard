@@ -75,8 +75,48 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.mini
         PRODUCT_NAME: SplashGuardMini
         INFOPLIST_FILE: Mini/Info-Mini.plist
-        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+    scheme:
+      gatherCoverageData: false
+
+  # 纯 Objective-C 对照 App：完全不链接 Swift 运行时。
+  # 它闪退 = 签名/TrollStore/系统问题；它能开 = 问题出在 Swift 工具链。
+  SGMiniObjC:
+    type: application
+    platform: iOS
+    sources:
+      - path: MiniObjC
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.miniobjc
+        PRODUCT_NAME: SGMiniObjC
+        INFOPLIST_FILE: MiniObjC/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "NO"
+    scheme:
+      gatherCoverageData: false
+
+  # Swift 版但把工具链自带的 Swift 运行时打进包里（Frameworks/），
+  # 绕开 iOS 14.2 自带的 5.3 stdlib 与新编译器不匹配的问题。
+  SGMiniEmb:
+    type: application
+    platform: iOS
+    sources:
+      - path: Mini
+        excludes:
+          - "*.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.miniemb
+        PRODUCT_NAME: SGMiniEmb
+        INFOPLIST_FILE: Mini/Info-MiniEmb.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "YES"
     scheme:
       gatherCoverageData: false
