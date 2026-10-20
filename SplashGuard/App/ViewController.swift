@@ -7,6 +7,7 @@ final class ViewController: UIViewController {
     private let detailLabel = UILabel()
     private let toggleButton = UIButton(type: .system)
     private let testButton = UIButton(type: .system)
+    private let logButton = UIButton(type: .system)
     private let resultView = UITextView()
     private var observer: NSObjectProtocol?
 
@@ -40,7 +41,11 @@ final class ViewController: UIViewController {
         resultView.text = "点「DNS 自检」查看隧道是否接管了 DNS"
         resultView.heightAnchor.constraint(equalToConstant: 320).isActive = true
 
-        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, resultView])
+        logButton.setTitle("隧道日志", for: .normal)
+        logButton.titleLabel?.font = .systemFont(ofSize: 16)
+        logButton.addTarget(self, action: #selector(logTapped), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, logButton, resultView])
         stack.axis = .vertical
         stack.spacing = 20
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -93,6 +98,13 @@ final class ViewController: UIViewController {
                 self?.testButton.isEnabled = true
             }
         }
+    }
+
+    @objc private func logTapped() {
+        let text = TunnelLog.readAll()
+        let lines = text.split(separator: "\n")
+        let tail = lines.suffix(60).joined(separator: "\n")
+        resultView.text = "=== 隧道日志（末 60 行）===\n" + (tail.isEmpty ? "（空）" : tail)
     }
 
     private func refresh() {
