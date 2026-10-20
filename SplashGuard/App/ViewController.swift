@@ -43,6 +43,12 @@ final class ViewController: UIViewController {
             self?.refresh()
         }
 
+        NotificationCenter.default.addObserver(
+            forName: .sgRulesLoaded, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.refresh()
+        }
+
         VPNController.shared.load { [weak self] _ in
             self?.refresh()
         }
