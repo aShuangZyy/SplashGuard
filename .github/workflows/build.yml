@@ -64,20 +64,27 @@ jobs:
         run: |
           set -euo pipefail
           APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
-          echo "APP=$APP"
+          [ -n "$APP" ] || { echo "找不到 .app"; exit 1; }
           mkdir -p Payload
           cp -R "$APP" Payload/
-          BIN="Payload/$(basename "$APP" | sed 's/\.app$//')"
-          ldid -S"SplashGuard/Entitlements/App.entitlements" "$BIN"
-          for APPEX in "$BIN"/PlugIns/*.appex; do
+          APPDIR="Payload/$(basename "$APP")"
+          echo "APPDIR=$APPDIR"
+          ls -la "$APPDIR"
+
+          MAIN_EXEC="$APPDIR/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Info.plist")"
+          echo "signing $MAIN_EXEC"
+          ldid -S"SplashGuard/Entitlements/App.entitlements" "$MAIN_EXEC"
+
+          for APPEX in "$APPDIR"/PlugIns/*.appex; do
             [ -d "$APPEX" ] || continue
             EXE="$APPEX/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPEX/Info.plist")"
+            echo "signing $EXE"
             ldid -S"SplashGuard/Entitlements/Tunnel.entitlements" "$EXE"
-            echo "signed $EXE"
           done
+
           zip -qry SplashGuard.ipa Payload
           ls -lh SplashGuard.ipa
-          unzip -l SplashGuard.ipa | head -20
+          unzip -l SplashGuard.ipa | head -30
 
       - uses: actions/upload-artifact@v4
         with:
