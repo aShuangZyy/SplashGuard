@@ -25,6 +25,10 @@ public final class VPNController {
     public func start(completion: @escaping (Error?) -> Void) {
         completion(nil)
     }
+
+    public func sendMessage(_ text: String, completion: @escaping (String) -> Void) {
+        completion("诊断构建：已禁用 NetworkExtension，无隧道进程可查询")
+    }
 }
 
 #else
@@ -68,6 +72,33 @@ public final class VPNController {
             completion(nil)
         default:
             start(completion: completion)
+        }
+    }
+
+    // MARK: - 与隧道进程通信（不依赖共享文件系统）
+
+    /// 向 provider 发一条消息并取回它的状态快照。
+    public func sendMessage(_ text: String, completion: @escaping (String) -> Void) {
+        guard let manager = manager else {
+            completion("隧道尚未创建：请先打开上方的开关，等状态变成「已启用」后再查")
+            return
+        }
+        guard let session = manager.connection as? NETunnelProviderSession else {
+            completion("当前连接不是 PacketTunnel 会话")
+            return
+        }
+        if status != .connected {
+            completion("隧道未连接（status \(status.rawValue)）：请先打开开关并等待「已启用」")
+            return
+        }
+        session.sendProviderMessage(Data(text.utf8)) { data in
+            guard let data = data, let reply = String(data: data, encoding: .utf8) else {
+                completion("隧道已连接，但没有回传数据")
+                return
+            }
+            completion(reply)
+        } errorHandler: { error in
+            completion("消息通道错误：\(error.localizedDescription)")
         }
     }
 
