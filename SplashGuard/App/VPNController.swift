@@ -35,6 +35,17 @@ public final class VPNController {
     public func diagnostics() -> String {
         return "诊断构建：已禁用 NetworkExtension"
     }
+
+    public func oneClickDiagnosis(completion: @escaping (String) -> Void) {
+        completion("诊断构建：已禁用 NetworkExtension")
+    }
+
+    static func syncMessage(_ text: String, timeout: TimeInterval = 4) -> String {
+        return "诊断构建"
+    }
+
+    static func appVersionString() -> String { return "diag" }
+    static func appexVersionString() -> String { return "diag" }
 }
 
 #else
@@ -219,6 +230,129 @@ public final class VPNController {
         out.append(String(repeating: "-", count: 30))
         out.append(contentsOf: history.suffix(14))
         return out.joined(separator: "\n")
+    }
+
+    /// 一键诊断：清配置 → 启动 → 观察状态 → XPC ping → 直连隧道 DNS → 取隧道日志。
+    /// 全部自动串起来，避免人工步骤错位。
+    public func oneClickDiagnosis(completion: @escaping (String) -> Void) {
+        var lines: [String] = []
+        let t0 = Date()
+        func stamp(_ m: String) {
+            lines.append(String(format: "[%4.1fs] ", Date().timeIntervalSince(t0)) + m)
+        }
+
+        lines.append("App \(VPNController.appVersionString()) / 包内 appex \(VPNController.appexVersionString())")
+        history.removeAll()
+
+        resetConfigs { [weak self] in
+            guard let self = self else { return }
+            stamp("旧配置已清除")
+            self.prepare { error in
+                if let error = error {
+                    stamp("新建配置失败：\(error.localizedDescription)")
+                    completion(lines.joined(separator: "\n"))
+                    return
+                }
+                guard let manager = self.manager else {
+                    stamp("没有 manager")
+                    completion(lines.joined(separator: "\n"))
+                    return
+                }
+                manager.saveToPreferences { saveError in
+                    if let saveError = saveError {
+                        stamp("saveToPreferences 失败：\(saveError.localizedDescription)")
+                        completion(lines.joined(separator: "\n"))
+                        return
+                    }
+                    manager.loadFromPreferences { loadError in
+                        if let loadError = loadError {
+                            stamp("loadFromPreferences 失败：\(loadError.localizedDescription)")
+                            completion(lines.joined(separator: "\n"))
+                            return
+                        }
+                        manager.isEnabled = true
+                        do {
+                            try manager.connection.startVPNTunnel()
+                            stamp("startVPNTunnel 已发出")
+                        } catch {
+                            stamp("startVPNTunnel 异常：\(error.localizedDescription)")
+                            completion(lines.joined(separator: "\n"))
+                            return
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                            stamp("观察 4 秒结束，当前 status=\(manager.connection.status.rawValue)")
+                            lines.append("状态时间线：")
+                            lines.append(contentsOf: self.history.map { "  " + $0 })
+                            self.probeAndReport(lines: lines, t0: t0, completion: completion)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// 在主线程外做阻塞探测：XPC ping、直连 10.8.0.2 的 DNS、取隧道日志。
+    private func probeAndReport(lines: [String], t0: Date, completion: @escaping (String) -> Void) {
+        var lines = lines
+        func stamp(_ m: String) {
+            lines.append(String(format: "[%4.1fs] ", Date().timeIntervalSince(t0)) + m)
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            // 1. XPC ping：appex 活着就一定回
+            let ping = VPNController.syncMessage("ping")
+            stamp("XPC ping → \(ping)")
+
+            // 2. 直连隧道 DNS 地址：只有 utun 建好且 appex 在跑才可能拿到我方应答
+            let magic = "sg-\(String(Int(Date().timeIntervalSince1970) % 100000)).splashguard.test"
+            stamp("拨 10.8.0.2 查 \(magic) → \(SelfTest.askTunnel(magic))")
+            stamp("拨 10.8.0.2 查 doubleclick.net → \(SelfTest.askTunnel("doubleclick.net"))")
+
+            // 3. 隧道内日志
+            let log = VPNController.syncMessage("log")
+            lines.append("隧道日志：")
+            lines.append(log)
+
+            let text = lines.joined(separator: "\n")
+            DispatchQueue.main.async { completion(text) }
+        }
+    }
+
+    /// 同步发一条 provider 消息（带超时），在后台线程调用。
+    static func syncMessage(_ text: String, timeout: TimeInterval = 4) -> String {
+        guard let manager = VPNController.shared.manager,
+              manager.connection.status == .connected else {
+            return "未连接（status=\(VPNController.shared.manager?.connection.status.rawValue ?? -1)）"
+        }
+        let sem = DispatchSemaphore(value: 0)
+        var reply: String?
+        do {
+            try manager.connection.sendProviderMessage(Data(text.utf8)) { data in
+                reply = data.flatMap { String(data: $0, encoding: .utf8) }
+                sem.signal()
+            }
+        } catch {
+            return "消息通道错误：\(error.localizedDescription)"
+        }
+        _ = sem.wait(timeout: .now() + timeout)
+        return reply ?? "无响应（\(Int(timeout))s 超时）"
+    }
+
+    static func appVersionString() -> String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(v)(\(b))"
+    }
+
+    static func appexVersionString() -> String {
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("PlugIns")
+            .appendingPathComponent(VPNController.appexBundleName)
+            .appendingPathComponent("Info.plist")
+        guard let dict = NSDictionary(contentsOf: url) else { return "缺失" }
+        let v = dict["CFBundleShortVersionString"] as? String ?? "?"
+        let b = dict["CFBundleVersion"] as? String ?? "?"
+        return "\(v)(\(b))"
     }
 
     /// 构造或复用 provider 配置
