@@ -12,8 +12,6 @@
 	</array>
 	<key>get-task-allow</key>
 	<true/>
-	<key>dynamic-codesigning</key>
-	<true/>
 	<key>application-identifier</key>
 	<string>com.splashguard.app</string>
 </dict>
