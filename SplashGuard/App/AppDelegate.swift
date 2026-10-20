@@ -1,5 +1,9 @@
 import UIKit
 
+extension Notification.Name {
+    static let sgRulesLoaded = Notification.Name("SGRulesLoaded")
+}
+
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
@@ -10,8 +14,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window.makeKeyAndVisible()
         self.window = window
 
-        if let dir = Bundle.main.resourceURL {
-            RuleEngine.shared.load(directory: dir)
+        // 规则表 6MB，放到首帧之后再读，避免启动路径上做重活
+        DispatchQueue.main.async {
+            if let dir = Bundle.main.resourceURL {
+                RuleEngine.shared.load(directory: dir)
+            }
+            NotificationCenter.default.post(name: .sgRulesLoaded, object: nil)
         }
         return true
     }
