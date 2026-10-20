@@ -46,8 +46,8 @@ final class ViewController: UIViewController {
         logButton.titleLabel?.font = .systemFont(ofSize: 16)
         logButton.addTarget(self, action: #selector(logTapped), for: .touchUpInside)
 
-        diagButton.setTitle("连接诊断", for: .normal)
-        diagButton.titleLabel?.font = .systemFont(ofSize: 16)
+        diagButton.setTitle("一键诊断", for: .normal)
+        diagButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
         diagButton.addTarget(self, action: #selector(diagTapped), for: .touchUpInside)
 
         let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, logButton, diagButton, resultView])
@@ -106,7 +106,15 @@ final class ViewController: UIViewController {
     }
 
     @objc private func diagTapped() {
-        resultView.text = VPNController.shared.diagnostics()
+        diagButton.isEnabled = false
+        resultView.text = "一键诊断中…\n会：清旧配置 → 启动 → 观察 4 秒 → XPC ping → 直连隧道 DNS → 取日志\n约 15 秒，不要切后台。"
+        VPNController.shared.oneClickDiagnosis { [weak self] report in
+            DispatchQueue.main.async {
+                self?.resultView.text = report
+                self?.diagButton.isEnabled = true
+                self?.refresh()
+            }
+        }
     }
 
     @objc private func logTapped() {
