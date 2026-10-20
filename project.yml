@@ -5,6 +5,8 @@ options:
     iOS: "14.0"
   createIntermediateGroups: true
   minimumXcodeGenVersion: "2.35.0"
+  # 55/56 是 Xcode 14/15 能读的格式；默认会写成 77，老 runner 打不开
+  objectVersion: "56"
 
 settings:
   base:
