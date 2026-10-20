@@ -47,47 +47,61 @@ jobs:
       - name: 编译（不签名）
         run: |
           set -o pipefail
-          xcodebuild \
-            -project SplashGuard.xcodeproj \
-            -scheme SplashGuard \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            ONLY_ACTIVE_ARCH=NO \
-            build
+          for SCHEME in SplashGuard SplashGuardMini; do
+            echo "===== building $SCHEME"
+            xcodebuild \
+              -project SplashGuard.xcodeproj \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              ONLY_ACTIVE_ARCH=NO \
+              build
+          done
+          ls -la build/Build/Products/Release-iphoneos
 
       - name: fakesign 并打包 IPA
         run: |
           set -euo pipefail
-          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
-          [ -n "$APP" ] || { echo "找不到 .app"; exit 1; }
-          mkdir -p Payload
-          cp -R "$APP" Payload/
-          APPDIR="Payload/$(basename "$APP")"
-          echo "APPDIR=$APPDIR"
-          ls -la "$APPDIR"
+          PRODUCTS=build/Build/Products/Release-iphoneos
 
-          MAIN_EXEC="$APPDIR/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Info.plist")"
-          echo "signing $MAIN_EXEC"
-          ldid -S"SplashGuard/Entitlements/App.entitlements" "$MAIN_EXEC"
+          pack() {
+            local APP_NAME="$1"; local APP_ENT="$2"; local TUN_ENT="$3"; local OUT="$4"
+            local D; D=$(mktemp -d)
+            mkdir -p "$D/Payload"
+            cp -R "$PRODUCTS/$APP_NAME.app" "$D/Payload/"
+            local APPDIR="$D/Payload/$APP_NAME.app"
+            local EXEC="$APPDIR/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Info.plist")"
+            echo "signing $EXEC"
+            ldid -S"$APP_ENT" "$EXEC"
+            if [ -n "$TUN_ENT" ]; then
+              for APPEX in "$APPDIR"/PlugIns/*.appex; do
+                [ -d "$APPEX" ] || continue
+                local EXE="$APPEX/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPEX/Info.plist")"
+                echo "signing $EXE"
+                ldid -S"$TUN_ENT" "$EXE"
+              done
+            fi
+            ( cd "$D" && zip -qry "$OLDPWD/$OUT" Payload )
+            ls -lh "$OUT"
+          }
 
-          for APPEX in "$APPDIR"/PlugIns/*.appex; do
-            [ -d "$APPEX" ] || continue
-            EXE="$APPEX/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPEX/Info.plist")"
-            echo "signing $EXE"
-            ldid -S"SplashGuard/Entitlements/Tunnel.entitlements" "$EXE"
-          done
+          pack SplashGuard SplashGuard/Entitlements/App.entitlements \
+               SplashGuard/Entitlements/Tunnel.entitlements SplashGuard.ipa
 
-          zip -qry SplashGuard.ipa Payload
-          ls -lh SplashGuard.ipa
-          unzip -l SplashGuard.ipa | head -30
+          pack SplashGuardMini SplashGuard/Entitlements/App.entitlements "" SplashGuardMini.ipa
+
+          unzip -l SplashGuard.ipa | head -25
+          unzip -l SplashGuardMini.ipa
 
       - uses: actions/upload-artifact@v4
         with:
           name: SplashGuard-ipa
-          path: SplashGuard.ipa
+          path: |
+            SplashGuard.ipa
+            SplashGuardMini.ipa
           if-no-files-found: error
