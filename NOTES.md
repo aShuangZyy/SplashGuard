@@ -69,3 +69,23 @@
 - [ ] TCP DNS 兜底（处理 TC=1 的截断应答）
 - [ ] M2：规则热更新（从 GitHub raw 拉增量，替换 bin 后重启隧道）
 - [ ] M3：可选启用 `NEFilterDataProvider` 做 URL 级补充
+
+## 已定位：启动闪退的元凶是 `dynamic-codesigning`
+
+真机实测（iOS 14.2 / iPhone 12 mini / TrollStore 安装），5 个只差 entitlement 的包：
+
+| 包 | entitlement | 结果 |
+|---|---|---|
+| SGM1 | `get-task-allow` | 通过 |
+| SGM2 | `get-task-allow` + `dynamic-codesigning` | **闪退** |
+| SGM3 | `get-task-allow` + `networkextension` + `vpn.api` | 通过 |
+| SGM4 | `get-task-allow` + `application-identifier` | 通过 |
+| SGNoNE / SGNoExt | 上面全套 + `dynamic-codesigning` | 闪退 |
+
+结论：
+1. `dynamic-codesigning` 会让 App 在启动时被系统直接杀掉，fakesign + TrollStore 下不能带。
+2. `com.apple.developer.networking.networkextension`（`packet-tunnel-provider`）和
+   `com.apple.developer.networking.vpn.api`（`allow-vpn`）**在 TrollStore 下是被认的**，
+   加上它们不影响启动 —— 这是 packet tunnel 方案可行的关键前提，已验证。
+3. `application-identifier` 可以带，填自己的 bundle id 即可。
+4. 排查手法：代码/资源完全相同、只改签名 entitlement 的对照包，是最快的二分方式。
