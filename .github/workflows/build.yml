@@ -69,8 +69,8 @@ jobs:
           tools/pack.sh SplashGuard SplashGuard/Entitlements/App.entitlements SplashGuard.ipa SplashGuard/Entitlements/Tunnel.entitlements
           tools/pack.sh SplashGuardMini SplashGuard/Entitlements/Mini.entitlements SGMini-swift16.ipa
           tools/pack.sh SGMiniObjC SplashGuard/Entitlements/Mini.entitlements SGMini-objc.ipa
-          tools/pack.sh SGNoNE SplashGuard/Entitlements/App.entitlements SGNoNE.ipa
-          tools/pack.sh SGNoExt SplashGuard/Entitlements/App.entitlements SGNoExt.ipa
+          tools/pack.sh SGNoNE SplashGuard/Entitlements/DiagNE.entitlements SGNoNE.ipa
+          tools/pack.sh SGNoExt SplashGuard/Entitlements/DiagExt.entitlements SGNoExt.ipa
           for F in SplashGuard.ipa SGMini-swift16.ipa SGMini-objc.ipa SGNoNE.ipa SGNoExt.ipa; do
             echo "===== $F"
             unzip -l "$F"
