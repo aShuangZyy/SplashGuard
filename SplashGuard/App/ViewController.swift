@@ -101,10 +101,27 @@ final class ViewController: UIViewController {
     }
 
     @objc private func logTapped() {
-        let text = TunnelLog.readAll()
-        let lines = text.split(separator: "\n")
-        let tail = lines.suffix(60).joined(separator: "\n")
-        resultView.text = "=== 隧道日志（末 60 行）===\n" + (tail.isEmpty ? "（空）" : tail)
+        resultView.text = "正在向隧道进程查询…"
+        VPNController.shared.sendMessage("status") { [weak self] reply in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                // 没连上时退回到文件日志（老通道），方便对照
+                let cantReach = reply.hasPrefix("隧道尚未创建")
+                    || reply.hasPrefix("隧道未连接")
+                    || reply.hasPrefix("当前连接不是")
+                    || reply.hasPrefix("诊断构建")
+                    || reply.hasPrefix("消息通道错误")
+                if cantReach {
+                    let text = TunnelLog.readAll()
+                    let tail = text.split(separator: "\n").suffix(60).joined(separator: "\n")
+                    self.resultView.text = reply
+                        + "\n\n=== 文件日志（末 60 行）===\n"
+                        + (tail.isEmpty ? "（空）" : tail)
+                } else {
+                    self.resultView.text = reply
+                }
+            }
+        }
     }
 
     private func refresh() {
