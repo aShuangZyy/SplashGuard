@@ -1,0 +1,64 @@
+name: SplashGuard
+options:
+  bundleIdPrefix: com.splashguard
+  deploymentTarget:
+    iOS: "14.0"
+  createIntermediateGroups: true
+  minimumXcodeGenVersion: "2.35.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "14.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    ARCHS: "arm64"
+    ONLY_ACTIVE_ARCH: "NO"
+    ENABLE_BITCODE: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGN_IDENTITY: ""
+    DEVELOPMENT_TEAM: ""
+    SWIFT_OPTIMIZATION_LEVEL: "-O"
+    GCC_OPTIMIZATION_LEVEL: "s"
+
+targets:
+  SplashGuard:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.app
+        PRODUCT_NAME: SplashGuard
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    scheme:
+      gatherCoverageData: false
+    dependencies:
+      - target: SplashGuardTunnel
+        embed: true
+
+  SplashGuardTunnel:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SplashGuard/Tunnel
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.app.tunnel
+        PRODUCT_NAME: SplashGuardTunnel
+        INFOPLIST_FILE: SplashGuard/Info-Tunnel.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Tunnel.entitlements
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+        SKIP_INSTALL: "YES"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"

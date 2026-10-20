@@ -1,0 +1,85 @@
+name: build-ipa
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+    paths-ignore: [ '**.md' ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # arm64 原生 runner，比 macos-13 的 x86 交叉编译快
+    runs-on: macos-14
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 环境信息
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: 安装工具
+        run: |
+          brew install xcodegen ldid
+          xcodegen --version
+
+      - name: 编译规则（仓库已带二进制表，此处仅在存在原始规则时重建）
+        run: |
+          if [ -d rules/vendor ] && [ -n "$(ls -A rules/vendor 2>/dev/null)" ]; then
+            python3 tools/build_rules.py --raw rules/vendor --out SplashGuard/Resources
+          else
+            echo "跳过：没有 rules/vendor 原始规则"
+          fi
+          ls -la SplashGuard/Resources
+
+      - name: 生成工程
+        run: xcodegen generate
+
+      - name: 编译（不签名）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SplashGuard.xcodeproj \
+            -scheme SplashGuard \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: fakesign 并打包 IPA
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          echo "APP=$APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          BIN="Payload/$(basename "$APP" | sed 's/\.app$//')"
+          ldid -S"SplashGuard/Entitlements/App.entitlements" "$BIN"
+          for APPEX in "$BIN"/PlugIns/*.appex; do
+            [ -d "$APPEX" ] || continue
+            EXE="$APPEX/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPEX/Info.plist")"
+            ldid -S"SplashGuard/Entitlements/Tunnel.entitlements" "$EXE"
+            echo "signed $EXE"
+          done
+          zip -qry SplashGuard.ipa Payload
+          ls -lh SplashGuard.ipa
+          unzip -l SplashGuard.ipa | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SplashGuard-ipa
+          path: SplashGuard.ipa
+          if-no-files-found: error

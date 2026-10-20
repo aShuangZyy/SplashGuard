@@ -1,0 +1,116 @@
+import Foundation
+import NetworkExtension
+
+final class PacketTunnelProvider: NEPacketTunnelProvider {
+
+    private let workQueue = DispatchQueue(label: "com.splashguard.tunnel")
+    private let resolver = UpstreamResolver(host: "223.5.5.5")
+    private var readLoopActive = false
+    private var blockedCount = 0
+    private var totalCount = 0
+
+    // MARK: - 生命周期
+
+    override func startTunnel(options: [String: NSObject]?,
+                              completionHandler: @escaping (Error?) -> Void) {
+        loadRules()
+
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.8.0.2")
+
+        let v4 = NEIPv4Settings(addresses: ["10.8.0.1"], subnetMasks: ["255.255.255.0"])
+        v4.includedRoutes = [NEIPv4Route(destinationAddress: "10.8.0.0", subnetMask: "255.255.255.0")]
+        v4.excludedRoutes = []
+        settings.ipv4Settings = v4
+
+        let dns = NEDNSSettings(servers: ["10.8.0.2"])
+        dns.matchDomains = nil          // nil = 对所有域名生效
+        settings.dnsSettings = dns
+        settings.mtu = 1400
+
+        setTunnelNetworkSettings(settings) { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                completionHandler(error)
+                return
+            }
+            self.readLoopActive = true
+            self.readPackets()
+            completionHandler(nil)
+        }
+    }
+
+    override func stopTunnel(with reason: NEProviderStopReason,
+                             completionHandler: @escaping () -> Void) {
+        readLoopActive = false
+        NSLog("[SplashGuard] stop, reason=%ld total=%ld blocked=%ld",
+              reason.rawValue, totalCount, blockedCount)
+        completionHandler()
+    }
+
+    // MARK: - 规则
+
+    private func loadRules() {
+        guard let dir = Bundle(for: PacketTunnelProvider.self).resourceURL else {
+            NSLog("[SplashGuard] appex 资源目录未找到")
+            return
+        }
+        RuleEngine.shared.load(directory: dir)
+        let s = RuleEngine.shared.stats
+        NSLog("[SplashGuard] rules loaded suffix=%ld exact=%ld kw=%ld rw=%ld mitm=%ld in %ldms err=%@",
+              s.suffixCount, s.exactCount, s.keywordCount, s.rewriteCount, s.mitmCount, s.loadMillis,
+              RuleEngine.shared.loadError ?? "-")
+    }
+
+    // MARK: - 收包
+
+    private func readPackets() {
+        guard readLoopActive else { return }
+        packetFlow.readPackets { [weak self] packets, protocols in
+            guard let self = self else { return }
+            for (index, data) in packets.enumerated() {
+                let proto = index < protocols.count ? protocols[index].int32Value : AF_INET
+                self.handle([UInt8](data), protocolNumber: proto)
+            }
+            self.readPackets()
+        }
+    }
+
+    private func handle(_ packet: [UInt8], protocolNumber: Int32) {
+        guard protocolNumber == AF_INET else { return }
+        guard let flow = IPPacket.parseUDP(packet) else { return }
+        guard flow.destPort == 53 else { return }
+
+        totalCount += 1
+        let query = flow.payload
+        guard let question = DNSWire.parseQuestions(query).first else {
+            forward(query, flow: flow)
+            return
+        }
+
+        if RuleEngine.shared.shouldBlock(host: question.name) {
+            blockedCount += 1
+            let response = DNSWire.blockedResponse(query: query, question: question)
+            writeBack(response, flow: flow)
+            return
+        }
+        forward(query, flow: flow)
+    }
+
+    private func forward(_ query: [UInt8], flow: IPPacket.UDPFlow) {
+        resolver.resolve(query: query) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let response):
+                self.writeBack(response, flow: flow)
+            case .failure:
+                let fail = DNSWire.errorResponse(query: query, rcode: 2)   // SERVFAIL
+                self.writeBack(fail, flow: flow)
+            }
+        }
+    }
+
+    private func writeBack(_ dnsPayload: [UInt8], flow: IPPacket.UDPFlow) {
+        let packet = IPPacket.buildUDPResponse(for: flow, payload: dnsPayload)
+        packetFlow.writePackets([Data(packet)], withProtocols: [NSNumber(value: AF_INET)])
+    }
+}

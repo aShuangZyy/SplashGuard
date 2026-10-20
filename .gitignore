@@ -1,0 +1,8 @@
+build/
+DerivedData/
+*.ipa
+*.tipa
+rules/build/
+.DS_Store
+rules/vendor/
+!rules/vendor/.keep
