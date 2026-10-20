@@ -6,6 +6,8 @@ final class ViewController: UIViewController {
     private let statusLabel = UILabel()
     private let detailLabel = UILabel()
     private let toggleButton = UIButton(type: .system)
+    private let testButton = UIButton(type: .system)
+    private let resultView = UITextView()
     private var observer: NSObjectProtocol?
 
     override func viewDidLoad() {
@@ -26,7 +28,19 @@ final class ViewController: UIViewController {
         toggleButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         toggleButton.addTarget(self, action: #selector(toggleTapped), for: .touchUpInside)
 
-        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton])
+        testButton.setTitle("DNS 自检", for: .normal)
+        testButton.titleLabel?.font = .systemFont(ofSize: 16)
+        testButton.addTarget(self, action: #selector(testTapped), for: .touchUpInside)
+
+        resultView.isEditable = false
+        resultView.isScrollEnabled = true
+        resultView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        resultView.backgroundColor = .secondarySystemBackground
+        resultView.layer.cornerRadius = 8
+        resultView.text = "点「DNS 自检」查看隧道是否接管了 DNS"
+        resultView.heightAnchor.constraint(equalToConstant: 320).isActive = true
+
+        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, resultView])
         stack.axis = .vertical
         stack.spacing = 20
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -65,6 +79,18 @@ final class ViewController: UIViewController {
                     self?.detailLabel.text = "操作失败：\(error.localizedDescription)"
                 }
                 self?.refresh()
+            }
+        }
+    }
+
+    @objc private func testTapped() {
+        testButton.isEnabled = false
+        resultView.text = "自检中…（每个域名最多等 2 秒）"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let report = SelfTest.run()
+            DispatchQueue.main.async { [weak self] in
+                self?.resultView.text = report
+                self?.testButton.isEnabled = true
             }
         }
     }
