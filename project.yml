@@ -136,7 +136,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.none
         PRODUCT_NAME: SGNoNE
         INFOPLIST_FILE: SplashGuard/Info-App.plist
-        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/DiagNE.entitlements
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
@@ -157,7 +157,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.noext
         PRODUCT_NAME: SGNoExt
         INFOPLIST_FILE: SplashGuard/Info-App.plist
-        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/DiagExt.entitlements
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
     scheme:
