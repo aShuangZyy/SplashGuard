@@ -6,11 +6,11 @@
 	<array>
 		<string>packet-tunnel-provider</string>
 	</array>
-	<key>platform-application</key>
-	<true/>
 	<key>get-task-allow</key>
 	<true/>
 	<key>dynamic-codesigning</key>
 	<true/>
+	<key>application-identifier</key>
+	<string>com.splashguard.app.tunnel</string>
 </dict>
 </plist>
