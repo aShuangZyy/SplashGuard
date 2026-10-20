@@ -1,6 +1,36 @@
 import Foundation
 import NetworkExtension
 
+#if SG_NO_NETWORKEXTENSION
+
+// 诊断用桩：不调用任何 NetworkExtension API，行为与真实实现一致，
+// 只把状态固定成"未连接"。用来判断闪退是不是 nehelper 干的。
+public final class VPNController {
+
+    public static let shared = VPNController()
+    public static let providerBundleID = "com.splashguard.app.tunnel"
+
+    private init() {}
+
+    public var status: NEVPNStatus { .invalid }
+
+    public func load(completion: @escaping (NEVPNStatus) -> Void) {
+        DispatchQueue.main.async { completion(.invalid) }
+    }
+
+    public func toggle(completion: @escaping (Error?) -> Void) {
+        completion(nil)
+    }
+
+    public func start(completion: @escaping (Error?) -> Void) {
+        completion(nil)
+    }
+}
+
+#else
+
+import NetworkExtension
+
 /// 管理 NEPacketTunnelProvider 配置与连接（App 侧）。
 public final class VPNController {
 
@@ -101,3 +131,5 @@ public final class VPNController {
         }
     }
 }
+
+#endif
