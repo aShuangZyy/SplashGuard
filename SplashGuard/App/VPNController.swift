@@ -321,16 +321,17 @@ public final class VPNController {
     /// 同步发一条 provider 消息（带超时），在后台线程调用。
     static func syncMessage(_ text: String, timeout: TimeInterval = 4) -> String {
         guard let manager = VPNController.shared.manager,
-              manager.connection.status == .connected else {
+              manager.connection.status == .connected,
+              let session = manager.connection as? NETunnelProviderSession else {
             return "未连接（status=\(VPNController.shared.manager?.connection.status.rawValue ?? -1)）"
         }
         let sem = DispatchSemaphore(value: 0)
         var reply: String?
         do {
-            try manager.connection.sendProviderMessage(Data(text.utf8)) { data in
+            try session.sendProviderMessage(Data(text.utf8), responseHandler: { data in
                 reply = data.flatMap { String(data: $0, encoding: .utf8) }
                 sem.signal()
-            }
+            })
         } catch {
             return "消息通道错误：\(error.localizedDescription)"
         }
