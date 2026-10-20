@@ -91,15 +91,19 @@ public final class VPNController {
             completion("隧道未连接（status \(status.rawValue)）：请先打开开关并等待「已启用」")
             return
         }
-        session.sendProviderMessage(Data(text.utf8)) { data in
+        let responseHandler: (Data?) -> Void = { data in
             guard let data = data, let reply = String(data: data, encoding: .utf8) else {
                 completion("隧道已连接，但没有回传数据")
                 return
             }
             completion(reply)
-        } errorHandler: { error in
-            completion("消息通道错误：\(error.localizedDescription)")
         }
+        let errorHandler: (Error?) -> Void = { error in
+            completion("消息通道错误：\(error?.localizedDescription ?? "未知")")
+        }
+        session.sendProviderMessage(Data(text.utf8),
+                                    responseHandler: responseHandler,
+                                    errorHandler: errorHandler)
     }
 
     public func start(completion: @escaping (Error?) -> Void) {
