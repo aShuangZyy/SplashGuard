@@ -29,6 +29,12 @@ public final class VPNController {
     public func sendMessage(_ text: String, completion: @escaping (String) -> Void) {
         completion("诊断构建：已禁用 NetworkExtension，无隧道进程可查询")
     }
+
+    public private(set) var history: [String] = []
+
+    public func diagnostics() -> String {
+        return "诊断构建：已禁用 NetworkExtension"
+    }
 }
 
 #else
@@ -40,8 +46,30 @@ public final class VPNController {
 
     public static let shared = VPNController()
     public static let providerBundleID = "com.splashguard.app.tunnel"
+    public static let appexBundleName = "SplashGuardTunnel.appex"
 
-    private init() {}
+    /// 连接状态变化的时间线，用来判断 appex 是不是启动后立刻退出
+    public private(set) var history: [String] = []
+
+    private init() {
+        NotificationCenter.default.addObserver(
+            forName: .NEVPNStatusDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.note("NEVPNStatusDidChange")
+        }
+    }
+
+    private static let stamp: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
+    func note(_ text: String) {
+        let line = "[\(VPNController.stamp.string(from: Date()))] \(text) status=\(status.rawValue)"
+        history.append(line)
+        if history.count > 40 { history.removeFirst(history.count - 40) }
+    }
 
     public private(set) var manager: NETunnelProviderManager?
 
@@ -106,32 +134,91 @@ public final class VPNController {
     }
 
     public func start(completion: @escaping (Error?) -> Void) {
-        prepare { [weak self] error in
-            guard let self = self, error == nil, let manager = self.manager else {
-                completion(error)
-                return
-            }
-            // iOS 要求先保存再重新读取，随后才能启动
-            manager.saveToPreferences { saveError in
-                if let saveError = saveError {
-                    completion(saveError)
+        note("start 请求：先清掉旧配置")
+        resetConfigs { [weak self] in
+            guard let self = self else { return }
+            self.prepare { error in
+                guard error == nil, let manager = self.manager else {
+                    completion(error)
                     return
                 }
-                manager.loadFromPreferences { loadError in
-                    if let loadError = loadError {
-                        completion(loadError)
+                // iOS 要求先保存再重新读取，随后才能启动
+                manager.saveToPreferences { saveError in
+                    if let saveError = saveError {
+                        completion(saveError)
                         return
                     }
-                    manager.isEnabled = true
-                    do {
-                        try manager.connection.startVPNTunnel()
-                        completion(nil)
-                    } catch {
-                        completion(error)
+                    manager.loadFromPreferences { loadError in
+                        if let loadError = loadError {
+                            completion(loadError)
+                            return
+                        }
+                        manager.isEnabled = true
+                        do {
+                            try manager.connection.startVPNTunnel()
+                            self.note("startVPNTunnel 已发出")
+                            completion(nil)
+                        } catch {
+                            self.note("startVPNTunnel 失败：\(error.localizedDescription)")
+                            completion(error)
+                        }
                     }
                 }
             }
         }
+    }
+
+    /// 清掉所有旧 VPN 配置。neagent 会把旧配置连同旧 appex 进程一起回收，
+    /// 否则可能出现「App 已经更新、实际跑的还是旧插件」。
+    private func resetConfigs(completion: @escaping () -> Void) {
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, _ in
+            guard let self = self else { completion(); return }
+            let all = managers ?? []
+            self.note("发现 \(all.count) 个旧配置")
+            guard !all.isEmpty else { completion(); return }
+            let group = DispatchGroup()
+            for m in all {
+                if m.connection.status != .invalid { m.connection.stopVPNTunnel() }
+                group.enter()
+                m.removeFromPreferences { _ in group.leave() }
+            }
+            group.notify(queue: .main) {
+                self.manager = nil
+                self.note("旧配置已清除")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { completion() }
+            }
+        }
+    }
+
+    // MARK: - 诊断
+
+    public func diagnostics() -> String {
+        var out: [String] = []
+        let appVer = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        out.append("App \(appVer)(\(appBuild))")
+
+        let appexInfo = Bundle.main.bundleURL
+            .appendingPathComponent("PlugIns")
+            .appendingPathComponent(VPNController.appexBundleName)
+            .appendingPathComponent("Info.plist")
+        if FileManager.default.fileExists(atPath: appexInfo.path),
+           let dict = NSDictionary(contentsOf: appexInfo),
+           let v = dict["CFBundleShortVersionString"] as? String,
+           let b = dict["CFBundleVersion"] as? String {
+            out.append("包内 appex \(v)(\(b))")
+        } else {
+            out.append("包内 appex：缺失")
+        }
+
+        if let m = manager, let p = m.protocolConfiguration as? NETunnelProviderProtocol {
+            out.append("配置 provider=\(p.providerBundleIdentifier ?? "-") enabled=\(m.isEnabled)")
+        } else {
+            out.append("配置：尚未创建")
+        }
+        out.append(String(repeating: "-", count: 30))
+        out.append(contentsOf: history.suffix(14))
+        return out.joined(separator: "\n")
     }
 
     /// 构造或复用 provider 配置
