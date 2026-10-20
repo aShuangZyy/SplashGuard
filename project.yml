@@ -246,3 +246,23 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
+  # 诊断 EntM1 的第二形态：与 SGM1 同 entitlement，但**不带 6MB 规则表**。
+  # 只有 SGM1 也闪退时才需要它，用来判断是不是规则表加载崩的。
+  SGM5:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.m5
+        PRODUCT_NAME: SGM5
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM1.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
+
