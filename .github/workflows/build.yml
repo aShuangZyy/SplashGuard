@@ -47,7 +47,7 @@ jobs:
       - name: 编译（不签名）
         run: |
           set -o pipefail
-          for SCHEME in SplashGuard SplashGuardMini; do
+          for SCHEME in SplashGuard SplashGuardMini SGMiniObjC SGMiniEmb; do
             echo "===== building $SCHEME"
             xcodebuild \
               -project SplashGuard.xcodeproj \
@@ -78,6 +78,11 @@ jobs:
             local EXEC="$APPDIR/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APPDIR/Info.plist")"
             echo "signing $EXEC"
             ldid -S"$APP_ENT" "$EXEC"
+            # 嵌入的 Swift 运行时（SGMiniEmb/SplashGuard 若开启 embed）也要签
+            for DYLIB in "$APPDIR"/Frameworks/*.dylib; do
+              [ -f "$DYLIB" ] || continue
+              ldid -S "$DYLIB"
+            done
             if [ -n "$TUN_ENT" ]; then
               for APPEX in "$APPDIR"/PlugIns/*.appex; do
                 [ -d "$APPEX" ] || continue
@@ -93,10 +98,14 @@ jobs:
           pack SplashGuard SplashGuard/Entitlements/App.entitlements \
                SplashGuard/Entitlements/Tunnel.entitlements SplashGuard.ipa
 
-          pack SplashGuardMini SplashGuard/Entitlements/App.entitlements "" SplashGuardMini.ipa
+          pack SplashGuardMini SplashGuard/Entitlements/Mini.entitlements "" SplashGuardMini.ipa
+          pack SGMiniObjC SplashGuard/Entitlements/Mini.entitlements "" SGMiniObjC.ipa
+          pack SGMiniEmb SplashGuard/Entitlements/Mini.entitlements "" SGMiniEmb.ipa
 
-          unzip -l SplashGuard.ipa | head -25
-          unzip -l SplashGuardMini.ipa
+          for F in SplashGuard.ipa SplashGuardMini.ipa SGMiniObjC.ipa SGMiniEmb.ipa; do
+            echo "===== $F"
+            unzip -l "$F"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,4 +113,6 @@ jobs:
           path: |
             SplashGuard.ipa
             SplashGuardMini.ipa
+            SGMiniObjC.ipa
+            SGMiniEmb.ipa
           if-no-files-found: error
