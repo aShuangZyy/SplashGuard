@@ -69,6 +69,13 @@ public enum DNSWire {
 
     /// 构造「域名被拦截」的应答：A 返回 0.0.0.0，AAAA 返回 ::，其余类型返回空答案
     public static func blockedResponse(query: [UInt8], question: DNSQuestion) -> [UInt8] {
+        return addressResponse(query: query, question: question, ipv4: [0, 0, 0, 0])
+    }
+
+    /// 直接把 A 查询答成指定 IPv4（自证域名用：只有本隧道会应答这些名字）
+    public static func addressResponse(query: [UInt8],
+                                       question: DNSQuestion,
+                                       ipv4: [UInt8]) -> [UInt8] {
         var out = [UInt8](repeating: 0, count: 12)
         guard query.count >= 12 else { return out }
         out[0] = query[0]
@@ -93,7 +100,7 @@ public enum DNSWire {
             out.append(contentsOf: [0x00, 0x01])           // CLASS IN
             out.append(contentsOf: [0x00, 0x00, 0x00, 0x3C]) // TTL 60
             out.append(contentsOf: [0x00, 0x04])           // RDLENGTH
-            out.append(contentsOf: [0x00, 0x00, 0x00, 0x00])
+            out.append(contentsOf: ipv4)
         } else if question.qtype == 28 {
             out.append(contentsOf: [0xC0, 0x0C])
             out.append(contentsOf: [0x00, 0x1C])
