@@ -134,6 +134,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
 
+        // 自证域名：只有本隧道会应答，上游 DNS 不可能知道 *.splashguard.test。
+        // 用来确认「数据真的进了我们的代码」，以及「跑的是哪个版本的 appex」。
+        if let ip = selfTestAddress(for: question.name) {
+            TunnelLog.append("selftest \(question.name) -> \(ip.map(String.init).joined(separator: "."))")
+            let response = DNSWire.addressResponse(query: query, question: question, ipv4: ip)
+            writeBack(response, flow: flow)
+            return
+        }
+
         let blocked = RuleEngine.shared.shouldBlock(host: question.name)
         if totalCount <= 40 {
             TunnelLog.append("q \(question.name) -> \(blocked ? "BLOCK" : "forward")")
@@ -148,6 +157,22 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         forward(query, flow: flow)
+    }
+
+    // MARK: - 自证域名
+
+    /// probe.splashguard.test → 10.8.99.1（证明隧道在收包并应答）
+    /// ver.splashguard.test   → 10.8.1.<CFBundleVersion>（证明跑的是哪个 appex）
+    private func selfTestAddress(for host: String) -> [UInt8]? {
+        let h = host.lowercased()
+        if h == "probe.splashguard.test" { return [10, 8, 99, 1] }
+        if h == "ver.splashguard.test" {
+            let raw = Bundle(for: PacketTunnelProvider.self)
+                .infoDictionary?["CFBundleVersion"] as? String
+            let build = raw.flatMap { Int($0) } ?? 0
+            return [10, 8, 1, UInt8(max(0, min(250, build)))]
+        }
+        return nil
     }
 
     private func forward(_ query: [UInt8], flow: IPPacket.UDPFlow) {
