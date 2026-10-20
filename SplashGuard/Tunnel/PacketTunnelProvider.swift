@@ -13,6 +13,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func startTunnel(options: [String: NSObject]?,
                               completionHandler: @escaping (Error?) -> Void) {
+        TunnelLog.reset()
+        TunnelLog.append("startTunnel")
         loadRules()
 
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "10.8.0.2")
@@ -42,6 +44,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func stopTunnel(with reason: NEProviderStopReason,
                              completionHandler: @escaping () -> Void) {
         readLoopActive = false
+        TunnelLog.append("stop reason=\(reason.rawValue) total=\(totalCount) blocked=\(blockedCount)")
         NSLog("[SplashGuard] stop, reason=%ld total=%ld blocked=%ld",
               reason.rawValue, totalCount, blockedCount)
         completionHandler()
@@ -50,15 +53,21 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - 规则
 
     private func loadRules() {
-        guard let dir = Bundle(for: PacketTunnelProvider.self).resourceURL else {
-            NSLog("[SplashGuard] appex 资源目录未找到")
-            return
+        // appex 里优先读自己的资源；个别情况下 appex 的资源没被拷进去，
+        // 就退回到宿主 App 的 bundle（PlugIns/X.appex 的上两级）。
+        var candidates: [URL] = []
+        if let own = Bundle(for: PacketTunnelProvider.self).resourceURL { candidates.append(own) }
+        let appexURL = Bundle(for: PacketTunnelProvider.self).bundleURL
+        let appURL = appexURL.deletingLastPathComponent().deletingLastPathComponent()
+        candidates.append(appURL)
+
+        for dir in candidates {
+            RuleEngine.shared.load(directory: dir)
+            let st = RuleEngine.shared.stats
+            TunnelLog.append("load dir=\(dir.path) suffix=\(st.suffixCount) exact=\(st.exactCount) kw=\(st.keywordCount) ms=\(st.loadMillis) err=\(RuleEngine.shared.loadError ?? "-")")
+            NSLog("[SplashGuard] load dir=%@ suffix=%ld err=%@", dir.path, st.suffixCount, RuleEngine.shared.loadError ?? "-")
+            if RuleEngine.shared.isLoaded && st.suffixCount > 0 { break }
         }
-        RuleEngine.shared.load(directory: dir)
-        let s = RuleEngine.shared.stats
-        NSLog("[SplashGuard] rules loaded suffix=%ld exact=%ld kw=%ld rw=%ld mitm=%ld in %ldms err=%@",
-              s.suffixCount, s.exactCount, s.keywordCount, s.rewriteCount, s.mitmCount, s.loadMillis,
-              RuleEngine.shared.loadError ?? "-")
     }
 
     // MARK: - 收包
@@ -87,7 +96,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
 
-        if RuleEngine.shared.shouldBlock(host: question.name) {
+        let blocked = RuleEngine.shared.shouldBlock(host: question.name)
+        if totalCount <= 40 {
+            TunnelLog.append("q \(question.name) -> \(blocked ? "BLOCK" : "forward")")
+        } else if totalCount % 200 == 0 {
+            TunnelLog.append("stats total=\(totalCount) blocked=\(blockedCount) loaded=\(RuleEngine.shared.isLoaded)")
+        }
+
+        if blocked {
             blockedCount += 1
             let response = DNSWire.blockedResponse(query: query, question: question)
             writeBack(response, flow: flow)
