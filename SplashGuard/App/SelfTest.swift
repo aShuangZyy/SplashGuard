@@ -27,7 +27,7 @@ enum SelfTest {
         out.append("隧道 DNS  10.8.0.2:53")
         out.append(String(repeating: "-", count: 40))
 
-        var tunnelOK = 0, blockOK = 0
+        var answered = 0, blockOK = 0, missed = 0
         for p in probes {
             let blocked = RuleEngine.shared.shouldBlock(host: p.host)
             let viaTunnel = query(host: p.host, server: "10.8.0.2")
@@ -38,20 +38,27 @@ enum SelfTest {
             out.append("  隧道DNS: \(viaTunnel)")
             out.append("  系统解析: \(system)")
 
-            if viaTunnel.hasPrefix("0.0.0.0") || viaTunnel.hasPrefix("::") { tunnelOK += 1 }
-            if blocked && viaTunnel.hasPrefix("0.0.0.0") { blockOK += 1 }
+            let isIP = viaTunnel.contains(".") || viaTunnel.contains(":")
+            let isZero = viaTunnel.hasPrefix("0.0.0.0") || viaTunnel.hasPrefix("::")
+            if isIP { answered += 1 }
+            if blocked && isZero { blockOK += 1 }
+            if blocked && isIP && !isZero { missed += 1 }
         }
 
         out.append(String(repeating: "-", count: 40))
-        if tunnelOK == probes.count {
-            out.append("结论：隧道 DNS 全部应答 → 接管成功")
-        } else if tunnelOK == 0 {
-            out.append("结论：隧道 DNS 无应答 → 隧道没接 DNS（看 NEDNSSettings）")
+        if answered == probes.count {
+            out.append("结论：隧道 DNS 全部应答 → DNS 已被接管")
+        } else if answered == 0 {
+            out.append("结论：隧道 DNS 无应答 → 隧道里的 DNS 没起来")
         } else {
-            out.append("结论：隧道 DNS 部分应答（\(tunnelOK)/\(probes.count)）")
+            out.append("结论：隧道 DNS 部分应答（\(answered)/\(probes.count)）")
         }
         if blockOK > 0 {
             out.append("拦截生效：\(blockOK) 个广告域被解析成 0.0.0.0")
+        }
+        if missed > 0 {
+            out.append("⚠️ 有 \(missed) 个域名规则表判定「拦截」但隧道返回了真实 IP")
+            out.append("→ 隧道进程里的规则表没生效，点「隧道日志」看 load 那行")
         }
         return out.joined(separator: "\n")
     }
