@@ -36,8 +36,8 @@ targets:
         PRODUCT_NAME: SplashGuard
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
     scheme:
       gatherCoverageData: false
     dependencies:
@@ -60,8 +60,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Tunnel.entitlements
         APPLICATION_EXTENSION_API_ONLY: "YES"
         SKIP_INSTALL: "YES"
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
 
   # 最小诊断 App：不碰 NetworkExtension、不读规则表、不加载任何资源。
   # 用来二分「闪退是签名/工具链问题」还是「我们代码问题」。
@@ -76,8 +76,8 @@ targets:
         PRODUCT_NAME: SplashGuardMini
         INFOPLIST_FILE: Mini/Info-Mini.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
     scheme:
       gatherCoverageData: false
 
@@ -94,8 +94,8 @@ targets:
         PRODUCT_NAME: SGMiniObjC
         INFOPLIST_FILE: MiniObjC/Info.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "NO"
     scheme:
       gatherCoverageData: false
@@ -115,8 +115,8 @@ targets:
         PRODUCT_NAME: SGMiniEmb
         INFOPLIST_FILE: Mini/Info-MiniEmb.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/Mini.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "YES"
     scheme:
       gatherCoverageData: false
@@ -137,8 +137,8 @@ targets:
         PRODUCT_NAME: SGNoNE
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/DiagNE.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
@@ -158,8 +158,8 @@ targets:
         PRODUCT_NAME: SGNoExt
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/DiagExt.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
     scheme:
       gatherCoverageData: false
 
@@ -178,8 +178,8 @@ targets:
         PRODUCT_NAME: SGM1
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM1.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
@@ -199,8 +199,8 @@ targets:
         PRODUCT_NAME: SGM2
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM2.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
@@ -220,8 +220,8 @@ targets:
         PRODUCT_NAME: SGM3
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM3.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
@@ -241,8 +241,8 @@ targets:
         PRODUCT_NAME: SGM4
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM4.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
@@ -260,8 +260,8 @@ targets:
         PRODUCT_NAME: SGM5
         INFOPLIST_FILE: SplashGuard/Info-App.plist
         CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/EntM1.entitlements
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.5"
+        CURRENT_PROJECT_VERSION: "15"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
     scheme:
       gatherCoverageData: false
