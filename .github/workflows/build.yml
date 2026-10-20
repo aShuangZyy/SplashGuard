@@ -45,7 +45,7 @@ jobs:
       - name: 编译（不签名）
         run: |
           set -o pipefail
-          for SCHEME in SplashGuard SplashGuardMini SGMiniObjC SGNoNE SGNoExt; do
+          for SCHEME in SplashGuard SGM1 SGM2 SGM3 SGM4; do
             echo "===== building $SCHEME"
             xcodebuild \
               -project SplashGuard.xcodeproj \
@@ -67,11 +67,11 @@ jobs:
           set -euo pipefail
           chmod +x tools/pack.sh
           tools/pack.sh SplashGuard SplashGuard/Entitlements/App.entitlements SplashGuard.ipa SplashGuard/Entitlements/Tunnel.entitlements
-          tools/pack.sh SplashGuardMini SplashGuard/Entitlements/Mini.entitlements SGMini-swift16.ipa
-          tools/pack.sh SGMiniObjC SplashGuard/Entitlements/Mini.entitlements SGMini-objc.ipa
-          tools/pack.sh SGNoNE SplashGuard/Entitlements/DiagNE.entitlements SGNoNE.ipa
-          tools/pack.sh SGNoExt SplashGuard/Entitlements/DiagExt.entitlements SGNoExt.ipa
-          for F in SplashGuard.ipa SGMini-swift16.ipa SGMini-objc.ipa SGNoNE.ipa SGNoExt.ipa; do
+          tools/pack.sh SGM1 SplashGuard/Entitlements/EntM1.entitlements SGM1.ipa
+          tools/pack.sh SGM2 SplashGuard/Entitlements/EntM2.entitlements SGM2.ipa
+          tools/pack.sh SGM3 SplashGuard/Entitlements/EntM3.entitlements SGM3.ipa
+          tools/pack.sh SGM4 SplashGuard/Entitlements/EntM4.entitlements SGM4.ipa
+          for F in SplashGuard.ipa SGM1.ipa SGM2.ipa SGM3.ipa SGM4.ipa; do
             echo "===== $F"
             unzip -l "$F"
           done
@@ -81,10 +81,10 @@ jobs:
           name: xcode16
           path: |
             SplashGuard.ipa
-            SGMini-swift16.ipa
-            SGMini-objc.ipa
-            SGNoNE.ipa
-            SGNoExt.ipa
+            SGM1.ipa
+            SGM2.ipa
+            SGM3.ipa
+            SGM4.ipa
 
   # Xcode 15.4 + SDK 17.5（macos-14），用 Swift 5.9 编译，验证是不是工具链问题。
   # XcodeGen 会写 objectVersion 77，Xcode 15 读不了，所以生成后强行改回 56。
