@@ -82,6 +82,11 @@ enum SelfTest {
         return out.joined(separator: "\n")
     }
 
+    /// 直接向隧道 DNS 地址（10.8.0.2）发一条查询：只有 utun 生效才可能收到我方应答
+    static func askTunnel(_ host: String) -> String {
+        return query(host: host, server: "10.8.0.2")
+    }
+
     // MARK: - 自己组一个 A 查询，直接发给隧道 DNS
 
     private static func makeQuery(_ host: String) -> [UInt8] {
