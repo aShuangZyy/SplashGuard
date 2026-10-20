@@ -120,3 +120,45 @@ targets:
         ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: "YES"
     scheme:
       gatherCoverageData: false
+
+  # 诊断 A：完整 App 代码 + 规则表，但不调用任何 NetworkExtension，
+  # 也不嵌入扩展。用来判断闪退是不是 nehelper 杀进程。
+  SGNoNE:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.none
+        PRODUCT_NAME: SGNoNE
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "SG_NO_NETWORKEXTENSION"
+    scheme:
+      gatherCoverageData: false
+
+  # 诊断 B：完整 App 代码 + 规则表 + 调 NetworkExtension，但不嵌入扩展。
+  SGNoExt:
+    type: application
+    platform: iOS
+    sources:
+      - path: SplashGuard/App
+      - path: SplashGuard/Core
+      - path: SplashGuard/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.splashguard.noext
+        PRODUCT_NAME: SGNoExt
+        INFOPLIST_FILE: SplashGuard/Info-App.plist
+        CODE_SIGN_ENTITLEMENTS: SplashGuard/Entitlements/App.entitlements
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    scheme:
+      gatherCoverageData: false
