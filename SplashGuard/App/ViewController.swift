@@ -8,6 +8,7 @@ final class ViewController: UIViewController {
     private let toggleButton = UIButton(type: .system)
     private let testButton = UIButton(type: .system)
     private let logButton = UIButton(type: .system)
+    private let diagButton = UIButton(type: .system)
     private let resultView = UITextView()
     private var observer: NSObjectProtocol?
 
@@ -39,15 +40,19 @@ final class ViewController: UIViewController {
         resultView.backgroundColor = .secondarySystemBackground
         resultView.layer.cornerRadius = 8
         resultView.text = "点「DNS 自检」查看隧道是否接管了 DNS"
-        resultView.heightAnchor.constraint(equalToConstant: 320).isActive = true
+        resultView.heightAnchor.constraint(equalToConstant: 250).isActive = true
 
         logButton.setTitle("隧道日志", for: .normal)
         logButton.titleLabel?.font = .systemFont(ofSize: 16)
         logButton.addTarget(self, action: #selector(logTapped), for: .touchUpInside)
 
-        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, logButton, resultView])
+        diagButton.setTitle("连接诊断", for: .normal)
+        diagButton.titleLabel?.font = .systemFont(ofSize: 16)
+        diagButton.addTarget(self, action: #selector(diagTapped), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [statusLabel, detailLabel, toggleButton, testButton, logButton, diagButton, resultView])
         stack.axis = .vertical
-        stack.spacing = 20
+        stack.spacing = 14
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -98,6 +103,10 @@ final class ViewController: UIViewController {
                 self?.testButton.isEnabled = true
             }
         }
+    }
+
+    @objc private func diagTapped() {
+        resultView.text = VPNController.shared.diagnostics()
     }
 
     @objc private func logTapped() {
