@@ -24,7 +24,21 @@ enum SelfTest {
 
     static func run() -> String {
         var out: [String] = []
-        out.append("隧道 DNS  10.8.0.2:53")
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        out.append("App 版本 \(ver)(\(build))　隧道 DNS 10.8.0.2:53")
+        out.append(String(repeating: "-", count: 40))
+
+        // 自证域名：*.splashguard.test 不存在于公网，只有本隧道会应答。
+        // 这是判断「我们的代码是否真的在数据路径上」的唯一硬证据。
+        let probeReply = query(host: "probe.splashguard.test", server: "10.8.0.2")
+        let verReply = query(host: "ver.splashguard.test", server: "10.8.0.2")
+        let inPath = probeReply.contains("10.8.99.1")
+        out.append("probe.splashguard.test → \(probeReply)")
+        out.append("ver.splashguard.test   → \(verReply)")
+        out.append(inPath
+                   ? "隧道在路径上：是（应答来自本隧道）"
+                   : "隧道在路径上：否（应答来自别处，或 appex 是旧版本）")
         out.append(String(repeating: "-", count: 40))
 
         var answered = 0, blockOK = 0, missed = 0
@@ -46,19 +60,24 @@ enum SelfTest {
         }
 
         out.append(String(repeating: "-", count: 40))
+        if !inPath {
+            out.append("结论：10.8.0.2 的应答不是本隧道给的")
+            out.append("→ 要么装的 appex 是旧版本，要么设置里的 DNS 没真正指向隧道")
+            return out.joined(separator: "\n")
+        }
         if answered == probes.count {
-            out.append("结论：隧道 DNS 全部应答 → DNS 已被接管")
+            out.append("结论：隧道在路径上且全部应答")
         } else if answered == 0 {
-            out.append("结论：隧道 DNS 无应答 → 隧道里的 DNS 没起来")
+            out.append("结论：隧道在路径上但对外查询无应答")
         } else {
-            out.append("结论：隧道 DNS 部分应答（\(answered)/\(probes.count)）")
+            out.append("结论：隧道在路径上，部分域名无应答（\(answered)/\(probes.count)）")
         }
         if blockOK > 0 {
             out.append("拦截生效：\(blockOK) 个广告域被解析成 0.0.0.0")
         }
         if missed > 0 {
             out.append("⚠️ 有 \(missed) 个域名规则表判定「拦截」但隧道返回了真实 IP")
-            out.append("→ 隧道进程里的规则表没生效，点「隧道日志」看 load 那行")
+            out.append("→ 隧道进程里的规则表没生效，点「隧道日志」看 loaded/error")
         }
         return out.joined(separator: "\n")
     }
